@@ -1,0 +1,1287 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Royal Ludo - Play Like a King</title>
+    <script src="https://www.gstatic.com/firebasejs/9.6.0/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.6.0/firebase-auth-compat.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/howler/2.2.3/howler.min.js"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;600;700&family=Montserrat:wght@800&display=swap" rel="stylesheet">
+    <style>
+        :root {
+            --primary: #6c5ce7;
+            --secondary: #a29bfe;
+            --accent: #fd79a8;
+            --dark: #2d3436;
+            --light: #f5f6fa;
+            --red: #ff5252;
+            --blue: #4285f4;
+            --green: #0f9d58;
+            --yellow: #ffeb3b;
+            --gold: #fdcb6e;
+        }
+        
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        body {
+            font-family: 'Poppins', sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: var(--light);
+            min-height: 100vh;
+            overflow-x: hidden;
+        }
+        
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 20px;
+            min-height: 100vh;
+            display: flex;
+            flex-direction: column;
+        }
+        
+        /* Header Styles */
+        header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 20px 0;
+            position: relative;
+        }
+        
+        .logo {
+            font-family: 'Montserrat', sans-serif;
+            font-size: 2.5rem;
+            font-weight: 800;
+            color: var(--gold);
+            text-shadow: 2px 2px 4px rgba(0,0,0,0.3);
+        }
+        
+        .logo span {
+            color: var(--light);
+        }
+        
+        /* Auth Container Styles */
+        .auth-screen {
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            flex-grow: 1;
+            padding: 40px 0;
+        }
+        
+        .auth-container {
+            background: rgba(255, 255, 255, 0.1);
+            backdrop-filter: blur(10px);
+            border-radius: 20px;
+            padding: 40px;
+            width: 100%;
+            max-width: 450px;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.2);
+            border: 1px solid rgba(255,255,255,0.2);
+            transform-style: preserve-3d;
+            transform: perspective(1000px);
+            transition: all 0.5s ease;
+        }
+        
+        .auth-container:hover {
+            transform: perspective(1000px) rotateY(5deg) rotateX(5deg);
+            box-shadow: 0 15px 35px rgba(0,0,0,0.3);
+        }
+        
+        .auth-container h2 {
+            text-align: center;
+            margin-bottom: 30px;
+            font-size: 2rem;
+            color: var(--gold);
+            position: relative;
+        }
+        
+        .auth-container h2::after {
+            content: '';
+            position: absolute;
+            bottom: -10px;
+            left: 50%;
+            transform: translateX(-50%);
+            width: 80px;
+            height: 3px;
+            background: var(--gold);
+            border-radius: 3px;
+        }
+        
+        .auth-form {
+            display: flex;
+            flex-direction: column;
+            gap: 20px;
+        }
+        
+        .input-group {
+            position: relative;
+        }
+        
+        .input-group input {
+            width: 100%;
+            padding: 15px 20px;
+            background: rgba(255,255,255,0.1);
+            border: 1px solid rgba(255,255,255,0.2);
+            border-radius: 10px;
+            font-size: 1rem;
+            color: var(--light);
+            transition: all 0.3s ease;
+        }
+        
+        .input-group input:focus {
+            outline: none;
+            border-color: var(--gold);
+            background: rgba(255,255,255,0.2);
+        }
+        
+        .input-group input::placeholder {
+            color: rgba(255,255,255,0.6);
+        }
+        
+        .auth-btn {
+            background: var(--gold);
+            color: var(--dark);
+            border: none;
+            padding: 15px;
+            border-radius: 10px;
+            font-size: 1.1rem;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            box-shadow: 0 4px 15px rgba(253, 203, 110, 0.3);
+        }
+        
+        .auth-btn:hover {
+            transform: translateY(-3px);
+            box-shadow: 0 7px 20px rgba(253, 203, 110, 0.4);
+        }
+        
+        .auth-btn:active {
+            transform: translateY(0);
+        }
+        
+        .auth-footer {
+            text-align: center;
+            margin-top: 20px;
+            color: rgba(255,255,255,0.8);
+        }
+        
+        .auth-footer a {
+            color: var(--gold);
+            text-decoration: none;
+            font-weight: 600;
+            transition: all 0.3s ease;
+        }
+        
+        .auth-footer a:hover {
+            text-decoration: underline;
+        }
+        
+        .error {
+            color: #ff7675;
+            text-align: center;
+            margin-bottom: 15px;
+            font-weight: 600;
+            animation: shake 0.5s ease;
+        }
+        
+        @keyframes shake {
+            0%, 100% { transform: translateX(0); }
+            20%, 60% { transform: translateX(-5px); }
+            40%, 80% { transform: translateX(5px); }
+        }
+        
+        /* Game Screen Styles */
+        .game-screen {
+            display: none;
+            flex-grow: 1;
+            position: relative;
+        }
+        
+        .logout-btn {
+            position: absolute;
+            top: 20px;
+            right: 20px;
+            padding: 10px 20px;
+            background: rgba(255, 107, 107, 0.9);
+            color: white;
+            border: none;
+            border-radius: 30px;
+            font-weight: 600;
+            cursor: pointer;
+            z-index: 100;
+            transition: all 0.3s ease;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+        
+        .logout-btn:hover {
+            background: rgba(255, 71, 71, 1);
+            transform: translateY(-2px);
+        }
+        
+        .logout-btn svg {
+            width: 18px;
+            height: 18px;
+            fill: currentColor;
+        }
+        
+        /* Lobby Styles */
+        .lobby {
+            background: rgba(255, 255, 255, 0.1);
+            backdrop-filter: blur(10px);
+            border-radius: 20px;
+            padding: 30px;
+            max-width: 600px;
+            margin: 40px auto;
+            text-align: center;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.2);
+            border: 1px solid rgba(255,255,255,0.2);
+        }
+        
+        .lobby h2 {
+            font-size: 1.8rem;
+            margin-bottom: 20px;
+            color: var(--gold);
+        }
+        
+        .action-btn {
+            background: var(--primary);
+            color: white;
+            border: none;
+            padding: 15px 30px;
+            border-radius: 50px;
+            font-size: 1.1rem;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            margin: 10px;
+            box-shadow: 0 4px 15px rgba(108, 92, 231, 0.3);
+        }
+        
+        .action-btn:hover {
+            background: var(--secondary);
+            transform: translateY(-3px);
+            box-shadow: 0 7px 20px rgba(108, 92, 231, 0.4);
+        }
+        
+        .action-btn.secondary {
+            background: var(--accent);
+            box-shadow: 0 4px 15px rgba(253, 121, 168, 0.3);
+        }
+        
+        .action-btn.secondary:hover {
+            background: #ff8fab;
+            box-shadow: 0 7px 20px rgba(253, 121, 168, 0.4);
+        }
+        
+        .room-link-container {
+            margin: 25px 0;
+        }
+        
+        .room-link {
+            background: rgba(0,0,0,0.2);
+            padding: 15px;
+            border-radius: 10px;
+            word-break: break-all;
+            font-family: monospace;
+            color: var(--gold);
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            margin-top: 10px;
+        }
+        
+        .copy-btn {
+            background: rgba(255,255,255,0.1);
+            border: none;
+            color: white;
+            padding: 5px 10px;
+            border-radius: 5px;
+            cursor: pointer;
+            transition: all 0.3s ease;
+        }
+        
+        .copy-btn:hover {
+            background: rgba(255,255,255,0.2);
+        }
+        
+        .players-waiting {
+            margin-top: 25px;
+        }
+        
+        .players-list {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 10px;
+            justify-content: center;
+            margin-top: 15px;
+        }
+        
+        .player-badge {
+            background: rgba(255,255,255,0.1);
+            padding: 8px 15px;
+            border-radius: 50px;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+        
+        .player-badge.you {
+            background: rgba(253, 203, 110, 0.2);
+            border: 1px solid var(--gold);
+        }
+        
+        .player-avatar {
+            width: 24px;
+            height: 24px;
+            border-radius: 50%;
+            background: var(--primary);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 12px;
+            font-weight: bold;
+        }
+        
+        /* Game Board Styles */
+        .game-container {
+            display: none;
+            width: 100%;
+            max-width: 800px;
+            margin: 0 auto;
+            position: relative;
+        }
+        
+        .player-info {
+            display: flex;
+            justify-content: space-between;
+            margin-bottom: 20px;
+            gap: 15px;
+        }
+        
+        .player-card {
+            background: rgba(255,255,255,0.1);
+            border-radius: 15px;
+            padding: 15px;
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            transition: all 0.3s ease;
+            border: 2px solid transparent;
+        }
+        
+        .player-card.current {
+            border-color: var(--gold);
+            background: rgba(253, 203, 110, 0.1);
+            box-shadow: 0 0 20px rgba(253, 203, 110, 0.2);
+        }
+        
+        .player-name {
+            font-weight: 600;
+            margin-bottom: 5px;
+            color: var(--gold);
+        }
+        
+        .player-color {
+            width: 20px;
+            height: 20px;
+            border-radius: 50%;
+            margin-bottom: 10px;
+        }
+        
+        .player-pieces {
+            display: flex;
+            gap: 5px;
+        }
+        
+        .piece-status {
+            width: 12px;
+            height: 12px;
+            border-radius: 50%;
+            border: 1px solid rgba(255,255,255,0.3);
+        }
+        
+        .piece-status.home {
+            background: rgba(255,255,255,0.2);
+        }
+        
+        .piece-status.path {
+            background: currentColor;
+        }
+        
+        .piece-status.finished {
+            background: currentColor;
+            box-shadow: 0 0 5px currentColor;
+        }
+        
+        .board-container {
+            position: relative;
+            width: 100%;
+            max-width: 600px;
+            margin: 0 auto;
+        }
+        
+        .board {
+            width: 100%;
+            height: auto;
+            background-image: url('https://i.imgur.com/JQZqy0m.png');
+            background-size: cover;
+            border-radius: 20px;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.3);
+            aspect-ratio: 1/1;
+            position: relative;
+            overflow: hidden;
+        }
+        
+        .piece {
+            width: 6%;
+            height: 6%;
+            border-radius: 50%;
+            position: absolute;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            border: 2px solid rgba(0,0,0,0.3);
+            box-sizing: border-box;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-weight: bold;
+            color: rgba(0,0,0,0.7);
+            z-index: 2;
+        }
+        
+        .piece::after {
+            content: '';
+            position: absolute;
+            top: -2px;
+            left: -2px;
+            right: -2px;
+            bottom: -2px;
+            border-radius: 50%;
+            border: 2px solid rgba(255,255,255,0.7);
+            z-index: 1;
+        }
+        
+        .piece.red { background-color: var(--red); }
+        .piece.blue { background-color: var(--blue); }
+        .piece.green { background-color: var(--green); }
+        .piece.yellow { background-color: var(--yellow); }
+        
+        .piece.highlight {
+            animation: pulse 1s infinite;
+            box-shadow: 0 0 15px currentColor;
+        }
+        
+        @keyframes pulse {
+            0% { transform: scale(1); }
+            50% { transform: scale(1.1); }
+            100% { transform: scale(1); }
+        }
+        
+        .dice-container {
+            position: absolute;
+            bottom: -30px;
+            left: 50%;
+            transform: translateX(-50%);
+            z-index: 10;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 10px;
+        }
+        
+        .dice {
+            width: 70px;
+            height: 70px;
+            background-color: white;
+            border-radius: 15px;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            font-size: 28px;
+            font-weight: bold;
+            cursor: pointer;
+            box-shadow: 0 5px 15px rgba(0,0,0,0.3);
+            transition: all 0.3s ease;
+            position: relative;
+            overflow: hidden;
+        }
+        
+        .dice::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: linear-gradient(135deg, rgba(255,255,255,0.3) 0%, rgba(255,255,255,0) 50%);
+            border-radius: 15px;
+        }
+        
+        .dice:hover {
+            transform: translateY(-5px) rotate(5deg);
+            box-shadow: 0 10px 25px rgba(0,0,0,0.4);
+        }
+        
+        .dice:active {
+            transform: translateY(0) rotate(0);
+        }
+        
+        .dice.highlight {
+            animation: diceGlow 0.5s infinite alternate;
+        }
+        
+        @keyframes diceGlow {
+            from { box-shadow: 0 0 5px rgba(255,255,255,0.5); }
+            to { box-shadow: 0 0 20px rgba(255,215,0,0.8); }
+        }
+        
+        .turn-indicator {
+            background: rgba(0,0,0,0.5);
+            color: white;
+            padding: 8px 15px;
+            border-radius: 20px;
+            font-weight: 600;
+            text-align: center;
+            margin-top: 10px;
+        }
+        
+        /* Responsive Styles */
+        @media (max-width: 768px) {
+            .container {
+                padding: 10px;
+            }
+            
+            .logo {
+                font-size: 1.8rem;
+            }
+            
+            .auth-container {
+                padding: 30px 20px;
+            }
+            
+            .player-info {
+                flex-direction: column;
+            }
+            
+            .player-card {
+                flex-direction: row;
+                justify-content: space-between;
+                align-items: center;
+            }
+            
+            .player-pieces {
+                order: -1;
+            }
+            
+            .board {
+                max-width: 95vw;
+                max-height: 95vw;
+            }
+            
+            .piece {
+                width: 8%;
+                height: 8%;
+            }
+        }
+        
+        /* Animations */
+        @keyframes float {
+            0%, 100% { transform: translateY(0); }
+            50% { transform: translateY(-10px); }
+        }
+        
+        .floating {
+            animation: float 3s ease-in-out infinite;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <header>
+            <div class="logo">ROYAL<span>LUDO</span></div>
+        </header>
+        
+        <!-- Authentication Screens -->
+        <div class="auth-screen" id="auth-screen">
+            <div id="login-container" class="auth-container floating">
+                <h2>Welcome Back!</h2>
+                <div id="login-error" class="error" style="display: none;"></div>
+                <form class="auth-form" id="login-form">
+                    <div class="input-group">
+                        <input type="email" id="login-email" placeholder="Email Address" required>
+                    </div>
+                    <div class="input-group">
+                        <input type="password" id="login-password" placeholder="Password" required>
+                    </div>
+                    <button type="submit" class="auth-btn" id="login-btn">Login</button>
+                </form>
+                <div class="auth-footer">
+                    Don't have an account? <a href="#" id="show-signup">Sign Up</a>
+                </div>
+            </div>
+
+            <div id="signup-container" class="auth-container floating" style="display: none;">
+                <h2>Join the Game!</h2>
+                <div id="signup-error" class="error" style="display: none;"></div>
+                <form class="auth-form" id="signup-form">
+                    <div class="input-group">
+                        <input type="email" id="signup-email" placeholder="Email Address" required>
+                    </div>
+                    <div class="input-group">
+                        <input type="password" id="signup-password" placeholder="Create Password" required>
+                    </div>
+                    <button type="submit" class="auth-btn" id="signup-btn">Create Account</button>
+                </form>
+                <div class="auth-footer">
+                    Already have an account? <a href="#" id="show-login">Login</a>
+                </div>
+            </div>
+        </div>
+
+        <!-- Game Screens -->
+        <div class="game-screen" id="game-screen">
+            <button id="logout-btn" class="logout-btn">
+                <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24">
+                    <path d="M16 17v-3h-3v-2h3v-3h2v3h3v2h-3v3h-2zm-8-7v2H4v8h8v2H2V10h6zm2-2h8V4h-8v2h6v6h-6v2H8v-8h2V8z"/>
+                </svg>
+                Logout
+            </button>
+            
+            <div id="lobby" class="lobby">
+                <h2>Start a New Game</h2>
+                <button id="create-room-btn" class="action-btn">
+                    Create Private Room
+                </button>
+                <div id="room-created" style="display: none;">
+                    <div class="room-link-container">
+                        <p>Share this link with friends:</p>
+                        <div id="room-link" class="room-link">
+                            <span id="room-link-text"></span>
+                            <button id="copy-btn" class="copy-btn">Copy</button>
+                        </div>
+                    </div>
+                    <div class="players-waiting">
+                        <h3>Players in Room</h3>
+                        <div class="players-list" id="players-list"></div>
+                    </div>
+                    <button id="start-game-btn" class="action-btn secondary" style="display: none;">
+                        Start Game
+                    </button>
+                </div>
+                <div id="join-room" style="margin-top: 30px;">
+                    <h3>Or join existing game:</h3>
+                    <input type="text" id="room-id-input" class="input-group" placeholder="Enter Room Code" style="margin: 15px auto; max-width: 300px;">
+                    <button id="join-room-btn" class="action-btn">
+                        Join Game
+                    </button>
+                </div>
+            </div>
+
+            <div id="game-container" class="game-container">
+                <div class="player-info" id="player-info"></div>
+                
+                <div class="board-container">
+                    <div class="board" id="board"></div>
+                    
+                    <div class="dice-container">
+                        <div class="dice" id="dice">0</div>
+                        <div class="turn-indicator" id="turn-indicator">Your turn!</div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // Firebase Configuration
+        const firebaseConfig = {
+            apiKey: "AIzaSyC8At7lpBHxEAMbJvMJ1LbXTII6kZAb44Y",
+            authDomain: "ludo-play-96aad.firebaseapp.com",
+            projectId: "ludo-play-96aad",
+            storageBucket: "ludo-play-96aad.firebasestorage.app",
+            messagingSenderId: "162062242725",
+            appId: "1:162062242725:web:cf2d4a0104df282ca28e4c",
+            measurementId: "G-9V4KH56CBX"
+        };
+
+        // Initialize Firebase
+        firebase.initializeApp(firebaseConfig);
+        const auth = firebase.auth();
+
+        // Game State
+        let currentUser = null;
+        let gameState = {
+            players: [
+                {
+                    id: "player1",
+                    name: "Player 1",
+                    color: "red",
+                    pieces: [
+                        { id: "p1-1", position: "home", pathIndex: -1 },
+                        { id: "p1-2", position: "home", pathIndex: -1 },
+                        { id: "p1-3", position: "home", pathIndex: -1 },
+                        { id: "p1-4", position: "home", pathIndex: -1 }
+                    ]
+                },
+                {
+                    id: "player2",
+                    name: "Player 2",
+                    color: "blue",
+                    pieces: [
+                        { id: "p2-1", position: "home", pathIndex: -1 },
+                        { id: "p2-2", position: "home", pathIndex: -1 },
+                        { id: "p2-3", position: "home", pathIndex: -1 },
+                        { id: "p2-4", position: "home", pathIndex: -1 }
+                    ]
+                },
+                {
+                    id: "player3",
+                    name: "Player 3",
+                    color: "green",
+                    pieces: [
+                        { id: "p3-1", position: "home", pathIndex: -1 },
+                        { id: "p3-2", position: "home", pathIndex: -1 },
+                        { id: "p3-3", position: "home", pathIndex: -1 },
+                        { id: "p3-4", position: "home", pathIndex: -1 }
+                    ]
+                },
+                {
+                    id: "player4",
+                    name: "Player 4",
+                    color: "yellow",
+                    pieces: [
+                        { id: "p4-1", position: "home", pathIndex: -1 },
+                        { id: "p4-2", position: "home", pathIndex: -1 },
+                        { id: "p4-3", position: "home", pathIndex: -1 },
+                        { id: "p4-4", position: "home", pathIndex: -1 }
+                    ]
+                }
+            ],
+            currentPlayer: 0,
+            diceValue: 0,
+            status: "waiting" // waiting, playing, finished
+        };
+
+        // Sound Effects - Using authentic Ludo sounds
+        const sounds = {
+            diceRoll: new Howl({ src: ['https://assets.mixkit.co/sfx/preview/mixkit-game-dice-roll-1994.mp3'] }),
+            pieceMove: new Howl({ src: ['https://assets.mixkit.co/sfx/preview/mixkit-quick-jump-arcade-game-239.mp3'] }),
+            pieceCapture: new Howl({ src: ['https://assets.mixkit.co/sfx/preview/mixkit-arcade-game-explosion-2759.mp3'] }),
+            victory: new Howl({ src: ['https://assets.mixkit.co/sfx/preview/mixkit-winning-chimes-2015.mp3'] }),
+            backgroundMusic: new Howl({
+                src: ['https://assets.mixkit.co/music/preview/mixkit-game-show-suspense-waiting-668.mp3'],
+                loop: true,
+                volume: 0.3
+            }),
+            buttonClick: new Howl({ src: ['https://assets.mixkit.co/sfx/preview/mixkit-select-click-1109.mp3'] })
+        };
+
+        // DOM Elements
+        const authScreen = document.getElementById('auth-screen');
+        const gameScreen = document.getElementById('game-screen');
+        const loginContainer = document.getElementById('login-container');
+        const signupContainer = document.getElementById('signup-container');
+        const loginError = document.getElementById('login-error');
+        const signupError = document.getElementById('signup-error');
+        const showSignup = document.getElementById('show-signup');
+        const showLogin = document.getElementById('show-login');
+        const loginForm = document.getElementById('login-form');
+        const signupForm = document.getElementById('signup-form');
+        const loginBtn = document.getElementById('login-btn');
+        const signupBtn = document.getElementById('signup-btn');
+        const logoutBtn = document.getElementById('logout-btn');
+        const createRoomBtn = document.getElementById('create-room-btn');
+        const roomCreatedDiv = document.getElementById('room-created');
+        const roomLinkText = document.getElementById('room-link-text');
+        const copyBtn = document.getElementById('copy-btn');
+        const playersList = document.getElementById('players-list');
+        const startGameBtn = document.getElementById('start-game-btn');
+        const joinRoomBtn = document.getElementById('join-room-btn');
+        const gameContainer = document.getElementById('game-container');
+        const playerInfoDiv = document.getElementById('player-info');
+        const board = document.getElementById('board');
+        const dice = document.getElementById('dice');
+        const turnIndicator = document.getElementById('turn-indicator');
+
+        // Auth Event Listeners
+        showSignup.addEventListener('click', (e) => {
+            e.preventDefault();
+            sounds.buttonClick.play();
+            loginContainer.style.display = 'none';
+            signupContainer.style.display = 'block';
+        });
+
+        showLogin.addEventListener('click', (e) => {
+            e.preventDefault();
+            sounds.buttonClick.play();
+            signupContainer.style.display = 'none';
+            loginContainer.style.display = 'block';
+        });
+
+        loginForm.addEventListener('submit', handleLogin);
+        signupForm.addEventListener('submit', handleSignup);
+        logoutBtn.addEventListener('click', handleLogout);
+        createRoomBtn.addEventListener('click', createRoom);
+        copyBtn.addEventListener('click', copyRoomLink);
+        startGameBtn.addEventListener('click', startGame);
+        joinRoomBtn.addEventListener('click', joinRoom);
+        dice.addEventListener('click', rollDice);
+
+        // Initialize
+        auth.onAuthStateChanged(user => {
+            if (user) {
+                currentUser = user;
+                authScreen.style.display = 'none';
+                gameScreen.style.display = 'block';
+                sounds.backgroundMusic.play();
+            } else {
+                authScreen.style.display = 'block';
+                gameScreen.style.display = 'none';
+                loginContainer.style.display = 'block';
+                signupContainer.style.display = 'none';
+                sounds.backgroundMusic.stop();
+            }
+        });
+
+        // Auth Functions
+        function handleLogin(e) {
+            e.preventDefault();
+            sounds.buttonClick.play();
+            
+            const email = document.getElementById('login-email').value;
+            const password = document.getElementById('login-password').value;
+            
+            loginBtn.textContent = 'Logging in...';
+            loginBtn.disabled = true;
+            
+            auth.signInWithEmailAndPassword(email, password)
+                .then(() => {
+                    loginError.style.display = 'none';
+                })
+                .catch(error => {
+                    loginError.textContent = error.message;
+                    loginError.style.display = 'block';
+                })
+                .finally(() => {
+                    loginBtn.textContent = 'Login';
+                    loginBtn.disabled = false;
+                });
+        }
+
+        function handleSignup(e) {
+            e.preventDefault();
+            sounds.buttonClick.play();
+            
+            const email = document.getElementById('signup-email').value;
+            const password = document.getElementById('signup-password').value;
+            
+            signupBtn.textContent = 'Creating account...';
+            signupBtn.disabled = true;
+            
+            auth.createUserWithEmailAndPassword(email, password)
+                .then(() => {
+                    signupError.style.display = 'none';
+                })
+                .catch(error => {
+                    signupError.textContent = error.message;
+                    signupError.style.display = 'block';
+                })
+                .finally(() => {
+                    signupBtn.textContent = 'Create Account';
+                    signupBtn.disabled = false;
+                });
+        }
+
+        function handleLogout() {
+            sounds.buttonClick.play();
+            auth.signOut();
+        }
+
+        // Game Functions
+        function createRoom() {
+            sounds.buttonClick.play();
+            
+            // In a real implementation, this would connect to a Socket.io server
+            const roomId = `ROOM-${Math.random().toString(36).substr(2, 5).toUpperCase()}`;
+            const roomLink = `${window.location.origin}?room=${roomId}`;
+            
+            roomLinkText.textContent = roomLink;
+            roomCreatedDiv.style.display = 'block';
+            
+            // Add current user to players list
+            updatePlayersList([{
+                id: currentUser.uid,
+                name: currentUser.email.split('@')[0],
+                isYou: true
+            }]);
+            
+            // Enable start game button when at least 2 players
+            if (playersList.children.length >= 2) {
+                startGameBtn.style.display = 'block';
+            }
+        }
+
+        function copyRoomLink() {
+            sounds.buttonClick.play();
+            navigator.clipboard.writeText(roomLinkText.textContent);
+            copyBtn.textContent = 'Copied!';
+            setTimeout(() => {
+                copyBtn.textContent = 'Copy';
+            }, 2000);
+        }
+
+        function joinRoom() {
+            sounds.buttonClick.play();
+            const roomIdInput = document.getElementById('room-id-input').value.trim();
+            
+            if (roomIdInput) {
+                // In a real implementation, this would connect to the room via Socket.io
+                roomCreatedDiv.style.display = 'block';
+                
+                // Simulate joining a room with some players
+                updatePlayersList([
+                    { id: 'player123', name: 'Opponent1', isYou: false },
+                    { 
+                        id: currentUser.uid, 
+                        name: currentUser.email.split('@')[0], 
+                        isYou: true 
+                    },
+                    { id: 'player456', name: 'Opponent2', isYou: false }
+                ]);
+                
+                startGameBtn.style.display = 'block';
+            }
+        }
+
+        function startGame() {
+            sounds.buttonClick.play();
+            lobby.style.display = 'none';
+            gameContainer.style.display = 'block';
+            renderGame();
+        }
+
+        function rollDice() {
+            if (gameState.status !== "playing") return;
+            if (gameState.diceValue !== 0) return;
+            
+            sounds.diceRoll.play();
+            dice.classList.add('highlight');
+            
+            // Animate dice roll
+            let rolls = 0;
+            const maxRolls = 10;
+            const rollInterval = setInterval(() => {
+                gameState.diceValue = Math.floor(Math.random() * 6) + 1;
+                dice.textContent = gameState.diceValue;
+                rolls++;
+                
+                if (rolls >= maxRolls) {
+                    clearInterval(rollInterval);
+                    dice.classList.remove('highlight');
+                    checkPossibleMoves();
+                }
+            }, 100);
+        }
+
+        function checkPossibleMoves() {
+            const currentPlayer = gameState.players[gameState.currentPlayer];
+            const movablePieces = currentPlayer.pieces.filter(piece => 
+                piece.position !== 'home' || gameState.diceValue === 6
+            );
+            
+            // Highlight movable pieces
+            document.querySelectorAll('.piece').forEach(pieceEl => {
+                const pieceId = pieceEl.id;
+                const piece = findPiece(pieceId);
+                
+                if (piece && movablePieces.some(p => p.id === pieceId)) {
+                    pieceEl.classList.add('highlight');
+                } else {
+                    pieceEl.classList.remove('highlight');
+                }
+            });
+            
+            if (movablePieces.length === 0) {
+                // No moves possible, switch player
+                setTimeout(() => {
+                    switchToNextPlayer();
+                }, 1500);
+            }
+        }
+
+        function movePiece(pieceId) {
+            const piece = findPiece(pieceId);
+            if (!piece) return;
+            
+            const currentPlayer = gameState.players[gameState.currentPlayer];
+            if (!currentPlayer.pieces.some(p => p.id === pieceId)) return;
+            
+            // Remove highlight from all pieces
+            document.querySelectorAll('.piece').forEach(p => p.classList.remove('highlight'));
+            
+            if (piece.position === 'home' && gameState.diceValue === 6) {
+                // Move piece out of home
+                sounds.pieceMove.play();
+                piece.position = 'path';
+                piece.pathIndex = 0;
+                switchToNextPlayer();
+            } else if (piece.position === 'path') {
+                // Move piece along path
+                const newPosition = piece.pathIndex + gameState.diceValue;
+                
+                // Check if piece can reach home
+                if (newPosition >= 56) {
+                    sounds.pieceMove.play();
+                    piece.position = 'finished';
+                    piece.pathIndex = -1;
+                    
+                    // Check if player has won
+                    if (currentPlayer.pieces.every(p => p.position === 'finished')) {
+                        setTimeout(() => {
+                            sounds.victory.play();
+                            alert(`${currentPlayer.name} has won the game!`);
+                            gameState.status = "finished";
+                        }, 500);
+                    } else {
+                        switchToNextPlayer();
+                    }
+                } else {
+                    // Check if piece will capture another piece
+                    const capturePiece = checkCapture(piece, newPosition);
+                    if (capturePiece) {
+                        sounds.pieceCapture.play();
+                        capturePiece.position = 'home';
+                        capturePiece.pathIndex = -1;
+                    } else {
+                        sounds.pieceMove.play();
+                    }
+                    
+                    piece.pathIndex = newPosition;
+                    switchToNextPlayer();
+                }
+            }
+            
+            renderGame();
+        }
+
+        function checkCapture(piece, newPosition) {
+            // Check if any opponent piece is at the new position
+            for (const player of gameState.players) {
+                if (player.id === gameState.players[gameState.currentPlayer].id) continue;
+                
+                for (const opponentPiece of player.pieces) {
+                    if (opponentPiece.position === 'path' && opponentPiece.pathIndex === newPosition) {
+                        return opponentPiece;
+                    }
+                }
+            }
+            return null;
+        }
+
+        function switchToNextPlayer() {
+            gameState.diceValue = 0;
+            dice.textContent = '0';
+            gameState.currentPlayer = (gameState.currentPlayer + 1) % gameState.players.length;
+            renderGame();
+        }
+
+        function findPiece(pieceId) {
+            for (const player of gameState.players) {
+                const piece = player.pieces.find(p => p.id === pieceId);
+                if (piece) return piece;
+            }
+            return null;
+        }
+
+        function updatePlayersList(players) {
+            playersList.innerHTML = '';
+            players.forEach(player => {
+                const playerBadge = document.createElement('div');
+                playerBadge.className = `player-badge ${player.isYou ? 'you' : ''}`;
+                playerBadge.innerHTML = `
+                    <div class="player-avatar">${player.name.charAt(0).toUpperCase()}</div>
+                    ${player.isYou ? 'You' : player.name}
+                `;
+                playersList.appendChild(playerBadge);
+            });
+        }
+
+        function renderGame() {
+            // Update player info
+            playerInfoDiv.innerHTML = '';
+            gameState.players.forEach((player, index) => {
+                const playerCard = document.createElement('div');
+                playerCard.className = `player-card ${index === gameState.currentPlayer ? 'current' : ''}`;
+                playerCard.innerHTML = `
+                    <div class="player-pieces">
+                        ${player.pieces.map(piece => `
+                            <div class="piece-status ${piece.position}" 
+                                 style="color: ${player.color}"></div>
+                        `).join('')}
+                    </div>
+                    <div>
+                        <div class="player-name">${player.name}</div>
+                        <div class="player-color" style="background: ${player.color}"></div>
+                    </div>
+                `;
+                playerInfoDiv.appendChild(playerCard);
+            });
+            
+            // Update turn indicator
+            const currentPlayer = gameState.players[gameState.currentPlayer];
+            turnIndicator.textContent = currentPlayer.id === currentUser.uid ? 
+                "Your turn! Roll the dice" : 
+                `${currentPlayer.name}'s turn`;
+            
+            // Render pieces
+            board.innerHTML = '';
+            gameState.players.forEach(player => {
+                player.pieces.forEach(piece => {
+                    const pieceElement = document.createElement('div');
+                    pieceElement.className = `piece ${player.color}`;
+                    pieceElement.id = piece.id;
+                    
+                    // Position the piece based on its state
+                    if (piece.position === 'home') {
+                        pieceElement.style.left = getHomePosition(player.color, piece.id).x + '%';
+                        pieceElement.style.top = getHomePosition(player.color, piece.id).y + '%';
+                    } else if (piece.position === 'finished') {
+                        pieceElement.style.left = getFinishedPosition(player.color, piece.id).x + '%';
+                        pieceElement.style.top = getFinishedPosition(player.color, piece.id).y + '%';
+                    } else {
+                        const pathPos = getPathPosition(piece.pathIndex, player.color);
+                        pieceElement.style.left = pathPos.x + '%';
+                        pieceElement.style.top = pathPos.y + '%';
+                    }
+                    
+                    // Add click handler for current player's turn
+                    if (gameState.status === "playing" && 
+                        gameState.players[gameState.currentPlayer].id === player.id && 
+                        gameState.diceValue > 0) {
+                        pieceElement.addEventListener('click', () => {
+                            if (isValidMove(piece, gameState)) {
+                                movePiece(piece.id);
+                            }
+                        });
+                    }
+                    
+                    board.appendChild(pieceElement);
+                });
+            });
+        }
+
+        // Helper functions for piece positioning
+        function getHomePosition(color, pieceId) {
+            const pieceIndex = parseInt(pieceId.split('-')[1]) - 1;
+            const positions = {
+                red: [
+                    {x: 10, y: 10}, {x: 20, y: 10},
+                    {x: 10, y: 20}, {x: 20, y: 20}
+                ],
+                blue: [
+                    {x: 70, y: 10}, {x: 80, y: 10},
+                    {x: 70, y: 20}, {x: 80, y: 20}
+                ],
+                green: [
+                    {x: 70, y: 70}, {x: 80, y: 70},
+                    {x: 70, y: 80}, {x: 80, y: 80}
+                ],
+                yellow: [
+                    {x: 10, y: 70}, {x: 20, y: 70},
+                    {x: 10, y: 80}, {x: 20, y: 80}
+                ]
+            };
+            return positions[color][pieceIndex];
+        }
+
+        function getFinishedPosition(color, pieceId) {
+            const pieceIndex = parseInt(pieceId.split('-')[1]) - 1;
+            const basePositions = {
+                red: {x: 45, y: 10},
+                blue: {x: 80, y: 45},
+                green: {x: 45, y: 80},
+                yellow: {x: 10, y: 45}
+            };
+            const offset = pieceIndex * 5;
+            return {
+                x: basePositions[color].x + (color === 'red' || color === 'green' ? offset : 0),
+                y: basePositions[color].y + (color === 'blue' || color === 'yellow' ? offset : 0)
+            };
+        }
+
+        function getPathPosition(index, color) {
+            // Define the path positions for each color
+            const path = [];
+            const pathLength = 56;
+            const segmentLength = pathLength / 4;
+            
+            // Create path positions
+            for (let i = 0; i < pathLength; i++) {
+                let x, y;
+                const segment = Math.floor(i / segmentLength);
+                const posInSegment = i % segmentLength;
+                const progress = posInSegment / segmentLength;
+                
+                switch (color) {
+                    case 'red':
+                        if (segment === 0) { x = 30 + progress * 40; y = 10; }
+                        else if (segment === 1) { x = 70; y = 10 + progress * 40; }
+                        else if (segment === 2) { x = 70 - progress * 40; y = 50; }
+                        else { x = 30; y = 50 - progress * 40; }
+                        break;
+                    case 'blue':
+                        if (segment === 0) { x = 70; y = 30 + progress * 40; }
+                        else if (segment === 1) { x = 70 - progress * 40; y = 70; }
+                        else if (segment === 2) { x = 30; y = 70 - progress * 40; }
+                        else { x = 30 + progress * 40; y = 30; }
+                        break;
+                    case 'green':
+                        if (segment === 0) { x = 50 - progress * 40; y = 70; }
+                        else if (segment === 1) { x = 10; y = 70 - progress * 40; }
+                        else if (segment === 2) { x = 10 + progress * 40; y = 30; }
+                        else { x = 50; y = 30 + progress * 40; }
+                        break;
+                    case 'yellow':
+                        if (segment === 0) { x = 10; y = 50 - progress * 40; }
+                        else if (segment === 1) { x = 10 + progress * 40; y = 10; }
+                        else if (segment === 2) { x = 50; y = 10 + progress * 40; }
+                        else { x = 50 - progress * 40; y = 50; }
+                        break;
+                }
+                
+                path.push({x, y});
+            }
+            
+            return index < path.length ? path[index] : path[path.length - 1];
+        }
+
+        function isValidMove(piece, gameState) {
+            if (gameState.diceValue === 6 && piece.position === 'home') return true;
+            if (piece.position === 'home' || piece.position === 'finished') return false;
+            return true;
+        }
+
+        // Handle room ID from URL
+        const urlParams = new URLSearchParams(window.location.search);
+        const roomParam = urlParams.get('room');
+        if (roomParam) {
+            document.getElementById('room-id-input').value = roomParam;
+        }
+
+        // Start with login form
+        loginContainer.style.display = 'block';
+        signupContainer.style.display = 'none';
+    </script>
+</body>
+</html>
