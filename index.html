@@ -1,0 +1,558 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Ludo Game</title>
+    <script src="https://www.gstatic.com/firebasejs/9.6.0/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.6.0/firebase-auth-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.6.0/firebase-analytics-compat.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/howler/2.2.3/howler.min.js"></script>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            margin: 0;
+            padding: 0;
+            background-color: #f5f5f5;
+        }
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 20px;
+        }
+        .auth-container {
+            background: white;
+            padding: 20px;
+            border-radius: 8px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+            max-width: 400px;
+            margin: 50px auto;
+        }
+        .auth-container h2 {
+            text-align: center;
+            margin-bottom: 20px;
+        }
+        .auth-container input {
+            width: 100%;
+            padding: 10px;
+            margin-bottom: 15px;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+            box-sizing: border-box;
+        }
+        .auth-container button {
+            width: 100%;
+            padding: 10px;
+            background-color: #4CAF50;
+            color: white;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+        }
+        .auth-container button:hover {
+            background-color: #45a049;
+        }
+        .error {
+            color: red;
+            margin-bottom: 15px;
+        }
+        .game-container {
+            display: none;
+            margin-top: 20px;
+        }
+        .board {
+            width: 500px;
+            height: 500px;
+            background-color: #fff;
+            position: relative;
+            margin: 0 auto;
+            background-image: url('https://i.imgur.com/JQZqy0m.png');
+            background-size: cover;
+            border-radius: 10px;
+        }
+        .piece {
+            width: 20px;
+            height: 20px;
+            border-radius: 50%;
+            position: absolute;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            border: 2px solid #333;
+            box-sizing: border-box;
+        }
+        .piece.red { background-color: #ff5252; }
+        .piece.blue { background-color: #4285f4; }
+        .piece.green { background-color: #0f9d58; }
+        .piece.yellow { background-color: #ffeb3b; }
+        .dice {
+            width: 60px;
+            height: 60px;
+            background-color: white;
+            border-radius: 10px;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            font-size: 24px;
+            font-weight: bold;
+            margin: 20px auto;
+            cursor: pointer;
+            box-shadow: 0 2px 5px rgba(0,0,0,0.2);
+        }
+        .player-info {
+            display: flex;
+            justify-content: space-around;
+            margin-bottom: 20px;
+        }
+        .player {
+            padding: 10px;
+            border-radius: 5px;
+            text-align: center;
+        }
+        .current {
+            border: 2px solid gold;
+        }
+        .logout-btn {
+            position: absolute;
+            top: 20px;
+            right: 20px;
+            padding: 8px 16px;
+            background-color: #f44336;
+            color: white;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+        }
+        .lobby {
+            background: white;
+            padding: 20px;
+            border-radius: 8px;
+            max-width: 500px;
+            margin: 20px auto;
+        }
+        .room-link {
+            background: #f0f0f0;
+            padding: 10px;
+            border-radius: 4px;
+            word-break: break-all;
+        }
+        .players-waiting {
+            margin-top: 20px;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <!-- Authentication Screens -->
+        <div id="auth-screen">
+            <div id="login-container" class="auth-container">
+                <h2>Login</h2>
+                <div id="login-error" class="error"></div>
+                <input type="email" id="login-email" placeholder="Email">
+                <input type="password" id="login-password" placeholder="Password">
+                <button id="login-btn">Login</button>
+                <p style="text-align: center; margin-top: 15px;">
+                    Don't have an account? <a href="#" id="show-signup">Sign Up</a>
+                </p>
+            </div>
+
+            <div id="signup-container" class="auth-container" style="display: none;">
+                <h2>Sign Up</h2>
+                <div id="signup-error" class="error"></div>
+                <input type="email" id="signup-email" placeholder="Email">
+                <input type="password" id="signup-password" placeholder="Password">
+                <button id="signup-btn">Sign Up</button>
+                <p style="text-align: center; margin-top: 15px;">
+                    Already have an account? <a href="#" id="show-login">Login</a>
+                </p>
+            </div>
+        </div>
+
+        <!-- Game Screens -->
+        <div id="game-screen" style="display: none;">
+            <button id="logout-btn" class="logout-btn">Logout</button>
+            
+            <div id="lobby" class="lobby">
+                <h2>Create or Join Game</h2>
+                <button id="create-room-btn">Create New Game</button>
+                <div id="room-created" style="display: none; margin-top: 20px;">
+                    <p>Share this link with friends:</p>
+                    <div id="room-link" class="room-link"></div>
+                    <div class="players-waiting">
+                        <h3>Players in room:</h3>
+                        <ul id="players-list"></ul>
+                    </div>
+                    <button id="start-game-btn" style="display: none;">Start Game</button>
+                </div>
+                <div id="join-room" style="margin-top: 20px;">
+                    <h3>Or join existing game:</h3>
+                    <input type="text" id="room-id-input" placeholder="Enter Room ID">
+                    <button id="join-room-btn">Join Game</button>
+                </div>
+            </div>
+
+            <div id="game-container" class="game-container">
+                <div class="player-info" id="player-info"></div>
+                <div class="board" id="board"></div>
+                <div class="dice" id="dice">0</div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // Your Firebase configuration
+        const firebaseConfig = {
+            apiKey: "AIzaSyC8At7lpBHxEAMbJvMJ1LbXTII6kZAb44Y",
+            authDomain: "ludo-play-96aad.firebaseapp.com",
+            projectId: "ludo-play-96aad",
+            storageBucket: "ludo-play-96aad.firebasestorage.app",
+            messagingSenderId: "162062242725",
+            appId: "1:162062242725:web:cf2d4a0104df282ca28e4c",
+            measurementId: "G-9V4KH56CBX"
+        };
+
+        // Initialize Firebase
+        firebase.initializeApp(firebaseConfig);
+        const auth = firebase.auth();
+        const analytics = firebase.analytics();
+
+        // Game State
+        let currentUser = null;
+        let gameState = {
+            players: [
+                {
+                    id: "player1",
+                    color: "red",
+                    pieces: [
+                        { id: "p1-1", position: "home", pathIndex: -1 },
+                        { id: "p1-2", position: "home", pathIndex: -1 },
+                        { id: "p1-3", position: "home", pathIndex: -1 },
+                        { id: "p1-4", position: "home", pathIndex: -1 }
+                    ]
+                },
+                {
+                    id: "player2",
+                    color: "blue",
+                    pieces: [
+                        { id: "p2-1", position: "home", pathIndex: -1 },
+                        { id: "p2-2", position: "home", pathIndex: -1 },
+                        { id: "p2-3", position: "home", pathIndex: -1 },
+                        { id: "p2-4", position: "home", pathIndex: -1 }
+                    ]
+                }
+            ],
+            currentPlayer: 0,
+            diceValue: 0
+        };
+
+        // Sound Effects
+        const sounds = {
+            dice: new Howl({ src: ['https://assets.mixkit.co/sfx/preview/mixkit-game-dice-roll-1994.mp3'] }),
+            move: new Howl({ src: ['https://assets.mixkit.co/sfx/preview/mixkit-quick-jump-arcade-game-239.mp3'] }),
+            win: new Howl({ src: ['https://assets.mixkit.co/sfx/preview/mixkit-winning-chimes-2015.mp3'] })
+        };
+
+        // DOM Elements
+        const authScreen = document.getElementById('auth-screen');
+        const gameScreen = document.getElementById('game-screen');
+        const loginContainer = document.getElementById('login-container');
+        const signupContainer = document.getElementById('signup-container');
+        const loginError = document.getElementById('login-error');
+        const signupError = document.getElementById('signup-error');
+        const showSignup = document.getElementById('show-signup');
+        const showLogin = document.getElementById('show-login');
+        const loginBtn = document.getElementById('login-btn');
+        const signupBtn = document.getElementById('signup-btn');
+        const logoutBtn = document.getElementById('logout-btn');
+        const createRoomBtn = document.getElementById('create-room-btn');
+        const roomCreatedDiv = document.getElementById('room-created');
+        const roomLink = document.getElementById('room-link');
+        const playersList = document.getElementById('players-list');
+        const startGameBtn = document.getElementById('start-game-btn');
+        const joinRoomBtn = document.getElementById('join-room-btn');
+        const gameContainer = document.getElementById('game-container');
+        const playerInfoDiv = document.getElementById('player-info');
+        const board = document.getElementById('board');
+        const dice = document.getElementById('dice');
+
+        // Auth Event Listeners
+        showSignup.addEventListener('click', (e) => {
+            e.preventDefault();
+            loginContainer.style.display = 'none';
+            signupContainer.style.display = 'block';
+        });
+
+        showLogin.addEventListener('click', (e) => {
+            e.preventDefault();
+            signupContainer.style.display = 'none';
+            loginContainer.style.display = 'block';
+        });
+
+        loginBtn.addEventListener('click', handleLogin);
+        signupBtn.addEventListener('click', handleSignup);
+        logoutBtn.addEventListener('click', handleLogout);
+        createRoomBtn.addEventListener('click', createRoom);
+        startGameBtn.addEventListener('click', startGame);
+        joinRoomBtn.addEventListener('click', joinRoom);
+        dice.addEventListener('click', rollDice);
+
+        // Initialize
+        auth.onAuthStateChanged(user => {
+            if (user) {
+                currentUser = user;
+                authScreen.style.display = 'none';
+                gameScreen.style.display = 'block';
+                analytics.logEvent('login');
+            } else {
+                authScreen.style.display = 'block';
+                gameScreen.style.display = 'none';
+                loginContainer.style.display = 'block';
+                signupContainer.style.display = 'none';
+            }
+        });
+
+        // Auth Functions
+        function handleLogin() {
+            const email = document.getElementById('login-email').value;
+            const password = document.getElementById('login-password').value;
+            
+            auth.signInWithEmailAndPassword(email, password)
+                .catch(error => {
+                    loginError.textContent = error.message;
+                    analytics.logEvent('login_error', { error: error.message });
+                });
+        }
+
+        function handleSignup() {
+            const email = document.getElementById('signup-email').value;
+            const password = document.getElementById('signup-password').value;
+            
+            auth.createUserWithEmailAndPassword(email, password)
+                .catch(error => {
+                    signupError.textContent = error.message;
+                    analytics.logEvent('signup_error', { error: error.message });
+                });
+        }
+
+        function handleLogout() {
+            auth.signOut();
+            analytics.logEvent('logout');
+        }
+
+        // Game Functions
+        function createRoom() {
+            // In a real implementation, this would connect to a Socket.io server
+            const roomId = `room_${Math.random().toString(36).substr(2, 9)}`;
+            roomLink.textContent = `${window.location.origin}?room=${roomId}`;
+            roomCreatedDiv.style.display = 'block';
+            updatePlayersList([currentUser.uid]);
+            
+            // Enable start game button when at least 2 players
+            if (playersList.children.length >= 2) {
+                startGameBtn.style.display = 'block';
+            }
+            
+            analytics.logEvent('create_room');
+        }
+
+        function joinRoom() {
+            const roomIdInput = document.getElementById('room-id-input').value;
+            if (roomIdInput) {
+                // In a real implementation, this would connect to the room via Socket.io
+                roomCreatedDiv.style.display = 'block';
+                updatePlayersList([currentUser.uid, `player_${Math.random().toString(36).substr(2, 5)}`]);
+                startGameBtn.style.display = 'block';
+                
+                analytics.logEvent('join_room');
+            }
+        }
+
+        function startGame() {
+            lobby.style.display = 'none';
+            gameContainer.style.display = 'block';
+            renderGame();
+            analytics.logEvent('start_game');
+        }
+
+        function rollDice() {
+            sounds.dice.play();
+            const diceValue = Math.floor(Math.random() * 6) + 1;
+            gameState.diceValue = diceValue;
+            dice.textContent = diceValue;
+            
+            // Check for possible moves
+            const currentPlayer = gameState.players[gameState.currentPlayer];
+            const movablePieces = currentPlayer.pieces.filter(piece => 
+                piece.position !== 'home' || gameState.diceValue === 6
+            );
+            
+            if (movablePieces.length === 0) {
+                // No moves possible, switch player
+                setTimeout(() => {
+                    gameState.currentPlayer = (gameState.currentPlayer + 1) % gameState.players.length;
+                    gameState.diceValue = 0;
+                    dice.textContent = '0';
+                    renderGame();
+                }, 1000);
+            }
+            
+            analytics.logEvent('roll_dice', { value: diceValue });
+        }
+
+        function movePiece(pieceId) {
+            const piece = findPiece(pieceId);
+            if (!piece) return;
+            
+            sounds.move.play();
+            
+            if (piece.position === 'home' && gameState.diceValue === 6) {
+                piece.position = 'path';
+                piece.pathIndex = 0;
+            } else if (piece.position === 'path') {
+                piece.pathIndex += gameState.diceValue;
+                if (piece.pathIndex >= 56) { // Assuming 56 steps in path
+                    piece.position = 'finished';
+                    checkWinCondition();
+                }
+            }
+            
+            // Switch player after move
+            gameState.currentPlayer = (gameState.currentPlayer + 1) % gameState.players.length;
+            gameState.diceValue = 0;
+            dice.textContent = '0';
+            
+            renderGame();
+            analytics.logEvent('move_piece');
+        }
+
+        function checkWinCondition() {
+            const currentPlayer = gameState.players[gameState.currentPlayer];
+            if (currentPlayer.pieces.every(piece => piece.position === 'finished')) {
+                sounds.win.play();
+                alert(`Player ${gameState.currentPlayer + 1} wins!`);
+                analytics.logEvent('game_win', { player: gameState.currentPlayer });
+            }
+        }
+
+        function findPiece(pieceId) {
+            for (const player of gameState.players) {
+                const piece = player.pieces.find(p => p.id === pieceId);
+                if (piece) return piece;
+            }
+            return null;
+        }
+
+        function updatePlayersList(players) {
+            playersList.innerHTML = '';
+            players.forEach(playerId => {
+                const li = document.createElement('li');
+                li.textContent = playerId === currentUser.uid ? 'You' : playerId;
+                playersList.appendChild(li);
+            });
+        }
+
+        function renderGame() {
+            // Update player info
+            playerInfoDiv.innerHTML = '';
+            gameState.players.forEach((player, index) => {
+                const playerDiv = document.createElement('div');
+                playerDiv.className = `player ${index === gameState.currentPlayer ? 'current' : ''}`;
+                playerDiv.innerHTML = `
+                    <strong>Player ${index + 1}</strong><br>
+                    Color: <span style="color:${player.color}">${player.color}</span>
+                `;
+                playerInfoDiv.appendChild(playerDiv);
+            });
+            
+            // Render pieces
+            board.innerHTML = '';
+            gameState.players.forEach(player => {
+                player.pieces.forEach(piece => {
+                    const pieceElement = document.createElement('div');
+                    pieceElement.className = `piece ${player.color}`;
+                    pieceElement.id = piece.id;
+                    
+                    // Position the piece based on its state
+                    if (piece.position === 'home') {
+                        pieceElement.style.left = getHomePosition(player.color, piece.id).x + 'px';
+                        pieceElement.style.top = getHomePosition(player.color, piece.id).y + 'px';
+                    } else if (piece.position === 'finished') {
+                        pieceElement.style.left = getFinishedPosition(player.color, piece.id).x + 'px';
+                        pieceElement.style.top = getFinishedPosition(player.color, piece.id).y + 'px';
+                    } else {
+                        const pathPos = getPathPosition(piece.pathIndex, player.color);
+                        pieceElement.style.left = pathPos.x + 'px';
+                        pieceElement.style.top = pathPos.y + 'px';
+                    }
+                    
+                    // Add click handler
+                    if (gameState.players[gameState.currentPlayer].id === player.id) {
+                        pieceElement.addEventListener('click', () => {
+                            if (gameState.diceValue > 0 && isValidMove(piece, gameState)) {
+                                movePiece(piece.id);
+                            }
+                        });
+                    }
+                    
+                    board.appendChild(pieceElement);
+                });
+            });
+        }
+
+        // Helper functions for piece positioning
+        function getHomePosition(color, pieceId) {
+            const pieceIndex = parseInt(pieceId.split('-')[1]) - 1;
+            const positions = {
+                red: [{x: 50, y: 50}, {x: 100, y: 50}, {x: 50, y: 100}, {x: 100, y: 100}],
+                blue: [{x: 350, y: 50}, {x: 400, y: 50}, {x: 350, y: 100}, {x: 400, y: 100}],
+                green: [{x: 350, y: 350}, {x: 400, y: 350}, {x: 350, y: 400}, {x: 400, y: 400}],
+                yellow: [{x: 50, y: 350}, {x: 100, y: 350}, {x: 50, y: 400}, {x: 100, y: 400}]
+            };
+            return positions[color][pieceIndex];
+        }
+
+        function getFinishedPosition(color, pieceId) {
+            const pieceIndex = parseInt(pieceId.split('-')[1]) - 1;
+            const basePositions = {
+                red: {x: 200, y: 50},
+                blue: {x: 400, y: 200},
+                green: {x: 200, y: 400},
+                yellow: {x: 50, y: 200}
+            };
+            const offset = pieceIndex * 30;
+            return {
+                x: basePositions[color].x + (color === 'red' || color === 'green' ? offset : 0),
+                y: basePositions[color].y + (color === 'blue' || color === 'yellow' ? offset : 0)
+            };
+        }
+
+        function getPathPosition(index, color) {
+            // Simplified path positions
+            const pathLength = 56;
+            const segmentLength = pathLength / 4;
+            const segment = Math.floor(index / segmentLength);
+            const posInSegment = index % segmentLength;
+            
+            if (color === 'red') {
+                if (segment === 0) return {x: 150 + posInSegment * 5, y: 50};
+                if (segment === 1) return {x: 400, y: 50 + posInSegment * 5};
+                if (segment === 2) return {x: 400 - posInSegment * 5, y: 400};
+                return {x: 50, y: 400 - posInSegment * 5};
+            }
+            return {x: 225, y: 225}; // Center as fallback
+        }
+
+        function isValidMove(piece, gameState) {
+            if (gameState.diceValue === 6 && piece.position === 'home') return true;
+            if (piece.position === 'home' || piece.position === 'finished') return false;
+            return true;
+        }
+
+        // Handle room ID from URL
+        const urlParams = new URLSearchParams(window.location.search);
+        const roomParam = urlParams.get('room');
+        if (roomParam) {
+            document.getElementById('room-id-input').value = roomParam;
+        }
+    </script>
+</body>
+</html>
